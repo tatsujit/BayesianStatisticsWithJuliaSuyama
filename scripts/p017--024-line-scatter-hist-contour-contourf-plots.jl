@@ -1,6 +1,7 @@
 using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
 
+program_name = "p17--24-line-scatter-hist-contour-contourf-plots.pdf"
 using CairoMakie
 using LaTeXStrings
 
@@ -109,7 +110,7 @@ cf = contourf!(ax, xs, ys, fz,
 
 Colorbar(fig[6:7, 3], cf, label = L"f(x, y)")
 
-
+title
 
 fig |> display
-save(plotsdir("p20-my_graph.pdf"), fig)
+save(plotsdir(program_name * ".pdf"), fig)
