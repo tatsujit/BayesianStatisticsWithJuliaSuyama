@@ -17,17 +17,30 @@ fig = Figure(resolution = (800, 600))
 ################################################################"
 # f(x) = -2(x-x_opt)^2
 ################################################################"
+x_init = -2.5
+maxiter = 20
+# η = 0.25
+# η = 0.2
+η = 0.1
+
 
 x_opt = 0.50
 y_opt = 0.0
 f(x) = -2 * (x - x_opt)^2
+f_string = "-2(x-0.5)^2"
 df(x) = ForwardDiff.derivative(f, x)
 xs = range(-3, 3, length=100)
 ax = Axis(fig[1, 1],
-          title = L"-x^2+1", xlabel = L"x", ylabel = L"y")
+          title = L"y = -x^2+1", xlabel = L"x", ylabel = L"y")
 lines!(ax, xs, f.(xs), color = :blue, label = "function")
 scatter!(ax, [x_opt], [f(x_opt)], color = :red, label = "optimal")
+scatter!(ax, [x_init], [f(x_init)], color = :purple, markersize = 10, label = "initial")
 axislegend(ax; position = :rb)
+
+Label(fig[0, 1:3],
+      L"\text{Maximize }f(x)=%$(f_string)\text{ with }\eta = %$η, \text{ }x_{\text{init}} = %$x_init",
+      # L"η = %$η,\text{ }x_{\text{init}} = %$x_init",
+      fontsize = 16, font = :bold)
 
 
 #1変数関数の最適化
@@ -45,9 +58,6 @@ function gradient_method_1dim(f, x_init, η, maxiter)
     x_seq
 end
 
-x_init = -2.5
-maxiter = 20
-η = 0.1
 
 x_seq = gradient_method_1dim(f, x_init, η, maxiter)
 f_seq = f.(x_seq)
@@ -62,10 +72,10 @@ hlines!(ax2, [y_opt], color = :red, label = L"\max\text{ }f")
 axislegend(ax2; position = :rb)
 
 ax3 = Axis(fig[2, 1],
-           title = L"\max f", xlabel = "iteration", ylabel = L"f")
+           title = L"\max f", xlabel = L"x", ylabel = L"f(x)")
 lines!(ax3, xs, f.(xs), color = :blue, label = "function")
-scatter!(ax3, [x_opt], [f(x_opt)], color = :red, label = "optimal")
 scatter!(ax3, x_seq, f_seq, color = :green, marker = :diamond, label = "optimization path")
+scatter!(ax3, [x_opt], [f(x_opt)], color = :red, label = "optimal")
 axislegend(ax3; position = :rb)
 
 ax4 = Axis(fig[2, 2:3],
@@ -78,4 +88,4 @@ hlines!(ax4, [x_opt], color = :red, linestyle = :dash, label = "optimal x")
 axislegend(ax4; position = :rb)
 
 fig |> display
-safesave(plotsdir(program_name * ".pdf"), fig)
+safesave(plotsdir(program_name * "_η=$(η)" * ".pdf"), fig)
