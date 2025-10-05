@@ -5,6 +5,7 @@
 
 using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
+program_name = "p047-function-optimization-n-variable"
 using DataFrames
 using CairoMakie
 using LaTeXStrings
@@ -12,8 +13,6 @@ using ColorSchemes
 using IceCream
 using ForwardDiff
 using Revise
-
-program_name = "p047-function-optimization-n-variable"
 include(srcdir("utility_functions.jl"))
 
 ################################################################"

@@ -7,6 +7,7 @@ ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 IceCream = "029bc01f-a38c-4df2-9931-c297cb6cdd02"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 
 [compat]
