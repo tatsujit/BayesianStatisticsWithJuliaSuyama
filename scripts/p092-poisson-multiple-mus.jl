@@ -17,7 +17,7 @@ n_row, n_col = n2grid(n_μs)
 # plot init
 ################################################################
 fig = Figure(
-    size = (800, 600),
+    size = (1200, 800),
     figure_padding = 30
 )
 Label(fig[0, 1:n_col],
@@ -74,12 +74,12 @@ oneσp = sp - sm
 
 ax2 = Axis(fig[n_row+1, 1:n_col],
            xlabel = "μ", ylabel = "prob.", title = "Poisson vs Normal, μ±σ")
-lines!(ax2, mus, oneσps)
+lines!(ax2, mus, oneσps, label="Poisson(μ) μ±σ",)
 hlines!(ax2, [oneσp],
         label="Normal μ±σ",
         color = :red,
-        linestyle = :dashed,
+        linestyle = :dash,
         )
-
+axislegend(ax2, position = :rb)
 fig |> display
-# safesave(plotsdir(program_name * ".pdf"), fig)
+safesave(plotsdir(program_name * ".pdf"), fig)
