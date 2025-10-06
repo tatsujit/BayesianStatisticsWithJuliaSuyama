@@ -27,15 +27,15 @@ Label(fig[0, 1],
 ax = Axis(fig[1,1],
           title = "negative Binomial($r, $μ)",
           xlabel = L"x",
-          ylabel = "frequency",
+          ylabel = "relative frequency",
           # aspect = DataAspect(),
           aspect = 2,
           )
 xs = 0:60
 max_val = maximum(X)
 hist!(ax, X, bins=max_val+1, normalization = :probability)
-lines!(ax, xs, pdf.(d, xs), color = :black)
-
+lines!(ax, xs, pdf.(d, xs), color = :black, label = "prob dist")
+axislegend(ax)
 # xs = 0:M
 # vs = [[x1, x2, M - x1 - x2] for x1 in xs, x2 in xs]
 # probabilities = [pdf(d, v) for v in vs]
@@ -47,3 +47,6 @@ lines!(ax, xs, pdf.(d, xs), color = :black)
 # Colorbar(fig[1,2], hm, label = "probability")
 
 fig |> display
+safesave(plotsdir(program_name * ".pdf"), fig)
+
+
