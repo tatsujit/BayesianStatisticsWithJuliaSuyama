@@ -1,7 +1,6 @@
 using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
 using CairoMakie
-
 program_name = "p037-two-variable-func-vector-field"
 
 L = 10 # resolution

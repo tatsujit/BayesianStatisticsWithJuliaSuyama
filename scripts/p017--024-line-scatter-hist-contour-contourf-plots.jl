@@ -1,6 +1,5 @@
 using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
-
 program_name = "p17--24-line-scatter-hist-contour-contourf-plots.pdf"
 using CairoMakie
 using LaTeXStrings
