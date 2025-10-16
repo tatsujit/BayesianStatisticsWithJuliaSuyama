@@ -21,7 +21,7 @@ fig = Figure(
     figure_padding = 30
 )
 Label(fig[0, 1:n_col],
-      "Poisson distributions",
+      "Poisson distributions (Poisson(μ), mean = variance = μ))",
       # L"η = %$η,\text{ }x_{\text{init}} = %$x_init",
       fontsize = 16, font = :bold)
 ################################################################

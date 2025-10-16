@@ -101,3 +101,10 @@ function gradient_method_1dim(f, x_init, η, maxiter)
     end
     x_seq
 end
+function approx_integration(x_range, f)
+    # 幅
+    Δ = x_range[2] - x_range[1]
+    # 近似された面積と幅を返す
+    area = sum(f(x) * Δ for x in x_range)
+    return area, Δ
+end

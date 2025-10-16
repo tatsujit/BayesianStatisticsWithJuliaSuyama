@@ -74,7 +74,9 @@ for (i, (a, b)) in enumerate(ranges)
         y_fill = pdf.(d, x_fill)
 
         # 範囲に色をつける
-        band!(ax, x_fill, fill(0, length(x_fill)), y_fill,
+        band!(ax,
+              x_fill, # x
+              fill(0, length(x_fill)), y_fill, # y_lower, y_upper
               color=(:blue, 0.3),
               label="P($a ≤ X ≤ $b)")
     else # cdfs
