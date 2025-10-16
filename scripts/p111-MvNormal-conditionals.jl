@@ -1,6 +1,6 @@
 using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
-program_name = "p109-MvNormal-marginals"
+program_name = "p111-MvNormal-conditionals"
 using CairoMakie
 using LaTeXStrings
 using Distributions
