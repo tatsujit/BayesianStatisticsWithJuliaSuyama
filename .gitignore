@@ -1,3 +1,14 @@
+# DrWatson versioned figures pattern
+# 最終版の図は追跡する（例: fig-1-b.pdf）
+!/plots/**/*.pdf
+!/plots/**/*.png
+!/plots/**/*.svg
+
+# ただし、バージョン番号付きの図は除外（例: fig-1-b_#7.pdf）
+/plots/**/*_#[0-9]*.pdf
+/plots/**/*_#[0-9]*.png
+/plots/**/*_#[0-9]*.svg
+
 ################################################################################
 #                          DrWatson Project Structure                          #
 ################################################################################
@@ -5,7 +16,7 @@
 # Folders to ignore - files may be too large, too many, etc. NOTE: EDIT IF NEEDED.
 /data
 /videos
-/plots
+# /plots
 /notebooks
 /_research
 
