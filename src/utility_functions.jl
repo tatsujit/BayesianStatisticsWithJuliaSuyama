@@ -45,10 +45,70 @@ julia> total = 10; map(x -> n2ij(x, total), 1:total)
  (3, 1)
  (3, 2)
 """
-function n2ij(n::Int, total::Int)::Tuple{Int,Int}
-    n_row, n_col = n2grid(total)
-    row = div(n-1, n_col)+1
-    col = rem(n-1, n_col)+1
+# function n2ij(n::Int, total::Int)::Tuple{Int,Int}
+#     n_row, n_col = n2grid(total)
+#     row = div(n-1, n_col)+1
+#     col = rem(n-1, n_col)+1
+#     return (row, col)
+# end
+"""
+    n2ij(n::Int, total::Int; n_row::Union{Int,Nothing}=nothing, n_col::Union{Int,Nothing}=nothing)::Tuple{Int,Int}
+
+線形インデックス n を行列インデックス (i, j) に変換する。
+グリッドの次元は n_row, n_col で指定可能。両方とも nothing の場合は n2grid(total) で自動決定。
+（両方指定された場合はそのまま使用（ただし n_row * n_col < total の場合、一部の要素がグリッドからはみ出す可能性があることに注意））
+
+# Examples
+```julia
+julia> total = 10; map(x -> n2ij(x, total), 1:total)
+10-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (1, 2)
+ (1, 3)
+ (1, 4)
+ (2, 1)
+ (2, 2)
+ (2, 3)
+ (2, 4)
+ (3, 1)
+ (3, 2)
+
+julia> # 明示的に 2×5 グリッドを指定
+julia> map(x -> n2ij(x, 10; n_row=2, n_col=5), 1:10)
+10-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (1, 2)
+ (1, 3)
+ (1, 4)
+ (1, 5)
+ (2, 1)
+ (2, 2)
+ (2, 3)
+ (2, 4)
+ (2, 5)
+```
+"""
+function n2ij(n::Int, total::Int; n_row::Union{Int,Nothing}=nothing, n_col::Union{Int,Nothing}=nothing)::Tuple{Int,Int}
+    # グリッドサイズの決定
+    if isnothing(n_row) && isnothing(n_col)
+        # 両方未指定の場合は n2grid で自動決定
+        n_row, n_col = n2grid(total)
+    elseif !isnothing(n_row) && isnothing(n_col)
+        # n_row のみ指定された場合
+        n_col = cld(total, n_row)  # ceiling division
+    elseif isnothing(n_row) && !isnothing(n_col)
+        # n_col のみ指定された場合
+        n_row = cld(total, n_col)
+    end
+    # 両方指定されている場合はそのまま使用
+
+    # 境界チェック
+    @assert 1 ≤ n ≤ total "n must be in range [1, $total], got $n"
+    @assert n_row * n_col ≥ total "Grid size $(n_row)×$(n_col) = $(n_row*n_col) is too small for $total elements"
+
+    # 線形インデックスから行列インデックスへの変換 (column-major)
+    row = div(n-1, n_col) + 1
+    col = rem(n-1, n_col) + 1
     return (row, col)
 end
 # total = 10; map(x -> n2ij(x, total), 1:total)

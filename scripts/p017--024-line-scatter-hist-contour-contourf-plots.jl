@@ -109,7 +109,5 @@ cf = contourf!(ax, xs, ys, fz,
 
 Colorbar(fig[6:7, 3], cf, label = L"f(x, y)")
 
-title
-
 fig |> display
 save(plotsdir(program_name * ".pdf"), fig)
