@@ -168,3 +168,38 @@ function approx_integration(x_range, f)
     area = sum(f(x) * Δ for x in x_range)
     return area, Δ
 end
+function generate_linear(X, σ, μ1, μ2, σ1, σ2)
+    w1 = rand(Normal(μ1, σ1))
+    w2 = rand(Normal(μ2, σ2))
+    f(x) = w1 * x + w2
+    Y = rand.(Normal.(f.(X), σ))
+    return Y, f, w1, w2
+end
+"""
+TODO: そのうち metaprogramming で書き直すと良い
+propertynames(ColorSchemes) とかやっても magma とか出てこないのでとりあえずあきらめる
+"""
+function colorscheme(cs)
+    if cs == "magma"
+        return ColorSchemes.magma.colors # 黄が薄い、range とって 2:end-1 を使うと濃くて良い
+    elseif cs == "plasma"
+        return ColorSchemes.plasma.colors # 黄が薄い、range とって 2:end-1 を使うとちょっと明るい
+    elseif cs == "turbo"
+        return ColorSchemes.turbo.colors # 黄緑が薄い、range とって 2:end-1 を使うとちょっと明るい
+    elseif cs == "inferno"
+        return ColorSchemes.inferno.colors # 黄色が薄い、range とって 2:end-1 を使うとちょっと明るいが秋っぽくて良い
+    elseif cs == "viridis"
+        return ColorSchemes.viridis.colors # 1, end を使うと黄色が薄い、 range とって 2:end-1 を使うと似かよってくる
+    end
+end
+# function colorscheme(cs)
+#     sym = Symbol(cs)
+#     if hasproperty(ColorSchemes.ColorSchemes, sym)
+#         return getfield(ColorSchemes.ColorSchemes, sym).colors
+#     else
+#         Base.error("Unknown colorscheme: $cs")
+#     end
+# end
+# function colorscheme(cs)
+#     return eval(:(ColorSchemes.$cs)).colors
+# end

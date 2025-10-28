@@ -113,3 +113,4 @@ end
 
 fig |> display
 # safesave(plotsdir(program_name * ".pdf"), fig)
+safesave(plotsdir(program_name * ".png"), fig)

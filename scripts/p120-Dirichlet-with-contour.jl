@@ -1,6 +1,6 @@
 using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
-program_name = "p120-Dirichlet"
+program_name = "p120-Dirichlet-with-contour"
 using CairoMakie
 using LaTeXStrings
 using Distributions
@@ -15,9 +15,9 @@ end
 
 include(srcdir("utility_functions.jl"))
 
-# fn_suffix = "_contourf_"
+fn_suffix = "_contourf_"
 # fn_suffix = "_heatmap_"
-fn_suffix = "_contour_"
+# fn_suffix = "_contour_"         #
 save_flag = true
 # save_flag = false
 pdf_file_too_big = true # then png

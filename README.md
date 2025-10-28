@@ -1,3 +1,6 @@
+# メモ
+## 2025/10/20 - Dirichlet については barycentric plot をしたかったが、できていない。Claudeはできなかった。
+
 # BayesianStatisticsWithJuliaSuyama
 
 Juliaで作って学ぶベイズ統計学
