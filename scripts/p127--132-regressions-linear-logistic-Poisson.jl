@@ -1,3 +1,7 @@
+# disp, save_fig = true, true
+disp, save_fig = true, false
+# disp, save_fig = false, true
+# disp, save_fig = false, false
 using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
 program_name = "p127--132-regressions-linear-logistic-Poisson"
@@ -169,5 +173,5 @@ for n in 1:num_samples
     end
 end
 
-fig |> display
-safesave(plotsdir(program_name * "_colorscheme=" * cs * "_.pdf"), fig)
+disp && fig |> display
+save_fig && safesave(plotsdir(program_name * "_colorscheme=" * cs * "_.pdf"), fig)

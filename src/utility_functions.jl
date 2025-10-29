@@ -203,3 +203,6 @@ end
 # function colorscheme(cs)
 #     return eval(:(ColorSchemes.$cs)).colors
 # end
+function sig(x)
+    return 1/(1 + exp(-x))
+end
