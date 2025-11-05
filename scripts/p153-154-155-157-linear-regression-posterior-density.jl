@@ -2,7 +2,7 @@
 disp, save_fig = true, false
 # disp, save_fig = false, true
 # disp, save_fig = false, false
-using DrWatson
+]using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
 program_name = "p153-linear-regression-posterior-density"
 using CairoMakie

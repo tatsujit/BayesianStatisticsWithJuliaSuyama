@@ -206,3 +206,114 @@ end
 function sig(x)
     return 1/(1 + exp(-x))
 end
+"""
+n次元単位行列
+"""
+eye(n) = Diagonal{Float64}(I, n)
+"""
+パラメータ抽出
+"""
+unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
+
+"""
+Metropolis-Hastings MCMC with gaussian proposal dist.
+"""
+function GaussianMH(log_p_tilde, μ0;
+                    max_iter::Int=100_000, σ::Float64=1.0,)
+    # サンプルを格納する配列
+    D = length(μ0)
+    # μ_samples = zeros(Float64, D, max_iter)
+    μ_samples = Array{typeof(μ0[1]), 2}(undef, D, max_iter)
+
+    # 初期サンプル
+    μ_samples[:, 1] = μ0
+
+    # 受容されたサンプルの数
+    num_accepted = 1
+
+    for i in 2:max_iter
+        # ガウス提案分布から新しいサンプルを生成
+        μ_tmp = rand(MvNormal(μ_samples[:, i-1], σ * eye(D)))
+
+        # 受容確率 r を計算
+        log_r = (log_p_tilde(μ_tmp) +
+            logpdf(MvNormal(μ_tmp, σ * eye(D)), μ_samples[:, i-1])) -
+            (log_p_tilde(μ_samples[:, i-1]) +
+            logpdf(MvNormal(μ_samples[:, i-1], σ), μ_tmp))
+        # accept at prob min(1, r) or not
+        is_accepted = min(1, exp(log_r)) > rand()
+        new_sample = is_accepted ? μ_tmp : μ_samples[:, i-1]
+
+        # 新しいサンプルを格納
+        μ_samples[:, i] = new_sample
+        # 受容されたサンプルの数を更新
+        num_accepted += is_accepted # Bool は Int に暗黙変換
+    end
+    return μ_samples, num_accepted
+end
+function inference_wrapper_GMH(log_joint, params, w_init;
+                               max_iter::Int=100_000, σ::Float64=1.0)
+    ulp(w) = log_joint(w, params...)
+    GaussianMH(ulp, w_init; max_iter=max_iter, σ=σ)
+end
+"""
+Hamiltonian Monte Carlo (HMC) sampling
+"""
+function HMC(log_p_tilde, μ0;
+             max_iter::Int=100_000, L::Int=100, ε::Float64=1e-1)
+
+    # value update by Leapfrog
+    function leapfrog(grad, p_in, μ_in, L, ε)
+        μ = μ_in
+        # μ = μ_in .+ ε * p
+        p = p_in + 0.5ε * grad(μ)
+        for l in 1:L-1
+            μ += ε * p
+            p += ε * grad(μ)
+        end
+        μ += ε * p
+        p += 0.5ε * grad(μ)
+        return p, μ
+    end
+
+    # 非正規化対数事後分布の勾配関数を計算
+    grad(μ) = ForwardDiff.gradient(log_p_tilde, μ)
+    # サンプルを格納する配列
+    D = length(μ0)
+    μ_samples = Array{typeof(μ0[1]), 2}(undef, D, max_iter)
+    # 初期サンプル
+    μ_samples[:, 1] = μ0
+    # 受容されたサンプルの数
+    num_accepted = 1
+
+    for i in 2:max_iter
+        # 運動量 p の生成
+        p_in = randn(size(μ0))
+        μ_in = μ_samples[:, i-1]
+
+        # リープフロッグ法で新しい位置と運動量を計算
+        p_out, μ_out = leapfrog(grad, p_in, μ_in, L, ε)
+
+        # 受容確率 r を計算
+        log_r = (log_p_tilde(μ_out) +
+            logpdf(MvNormal(zeros(D), eye(D)), vec(p_out))) -
+            (log_p_tilde(μ_in) +
+            logpdf(MvNormal(zeros(D), eye(D)), vec(p_in)))
+
+        # accept at prob min(1, r) or not
+        is_accepted = min(1, exp(log_r)) > rand()
+        new_sample = is_accepted ? μ_out : μ_in
+
+        # 新しいサンプルを格納
+        # @inbounds μ_samples[:, i] = new_sample
+        μ_samples[:, i] = new_sample
+        # 受容されたサンプルの数を更新
+        num_accepted += is_accepted # Bool は Int に暗黙変換
+    end
+    return μ_samples, num_accepted
+end
+function inference_wrapper_HMC(log_joint, params, w_init;
+                               max_iter::Int=100_000, L::Int=100, ε::Float64=1e-1)
+    ulp(w) = log_joint(w, params...)
+    HMC(ulp, w_init; max_iter=max_iter, L=L, ε=ε)
+end

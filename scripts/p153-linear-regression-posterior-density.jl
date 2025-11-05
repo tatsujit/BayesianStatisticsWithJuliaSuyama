@@ -1,5 +1,5 @@
-disp, save_fig = true, true
-# disp, save_fig = true, false
+# disp, save_fig = true, true
+disp, save_fig = true, false
 # disp, save_fig = false, true
 # disp, save_fig = false, false
 using DrWatson
@@ -18,6 +18,10 @@ include(srcdir("utility_functions.jl"))
 ################################################################
 X_obs = [-2, 1, 5]
 Y_obs = [-2.2, -1.0, 1.5]
+
+σ = 1.0
+μ1, μ2 = 0.0, 0.0
+σ1, σ2 = 10.0, 10.0
 
 
 ################################################################
