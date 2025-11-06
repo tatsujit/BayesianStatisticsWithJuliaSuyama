@@ -145,7 +145,7 @@ function sign_changes(v::AbstractVector{<:Real})
     return count(i -> signs[i] != signs[i+1], 1:length(signs)-1)
 end
 """
-function gradient_method_1dim(f, x_init, η, maxiter)
+    gradient_method_1dim(f, x_init, η, maxiter)
 1変数関数の最適化
 """
 function gradient_method_1dim(f, x_init, η, maxiter)
@@ -206,9 +206,12 @@ end
 function sig(x)
     return 1/(1 + exp(-x))
 end
+
+using LinearAlgebra
 """
 n次元単位行列
 """
+# eye(n) = Diagonal{Float64}(I, n) # LoadError: UndefVarError: `Diagonal` not defined
 eye(n) = Diagonal{Float64}(I, n)
 """
 パラメータ抽出
@@ -256,6 +259,7 @@ function inference_wrapper_GMH(log_joint, params, w_init;
     ulp(w) = log_joint(w, params...)
     GaussianMH(ulp, w_init; max_iter=max_iter, σ=σ)
 end
+using ForwardDiff
 """
 Hamiltonian Monte Carlo (HMC) sampling
 """
@@ -276,8 +280,8 @@ function HMC(log_p_tilde, μ0;
         return p, μ
     end
 
-    # 非正規化対数事後分布の勾配関数を計算
-    grad(μ) = ForwardDiff.gradient(log_p_tilde, μ)
+    # # 非正規化対数事後分布の勾配関数を計算 # for の中に移動
+    # grad(μ) = ForwardDiff.gradient(log_p_tilde, μ)
     # サンプルを格納する配列
     D = length(μ0)
     μ_samples = Array{typeof(μ0[1]), 2}(undef, D, max_iter)
@@ -290,6 +294,9 @@ function HMC(log_p_tilde, μ0;
         # 運動量 p の生成
         p_in = randn(size(μ0))
         μ_in = μ_samples[:, i-1]
+
+        # 非正規化対数事後分布の勾配関数を計算
+        grad(μ) = ForwardDiff.gradient(log_p_tilde, μ)
 
         # リープフロッグ法で新しい位置と運動量を計算
         p_out, μ_out = leapfrog(grad, p_in, μ_in, L, ε)
@@ -316,4 +323,80 @@ function inference_wrapper_HMC(log_joint, params, w_init;
                                max_iter::Int=100_000, L::Int=100, ε::Float64=1e-1)
     ulp(w) = log_joint(w, params...)
     HMC(ulp, w_init; max_iter=max_iter, L=L, ε=ε)
+end
+function gradient_method(f, x_init, η, max_iter)
+    g(x) = ForwardDiff.gradient(f, x)
+    x_seq = Array{typeof(x_init[1]), 2}(undef, length(x_init), max_iter)
+    x_seq[:, 1] .= x_init
+    for i in 2:max_iter
+        # maximum を探すから - ではなく +
+        x_seq[:, i] = x_seq[:, i-1] + η * g(x_seq[:, i-1])
+    end
+    return x_seq
+end
+
+function inference_wrapper_gd(log_joint, params, w_init, η, max_iter)
+    ulp(w) = log_joint(w, params...)
+    w_seq = gradient_method(ulp, w_init, η, max_iter)
+    return w_seq
+end
+struct PosteriorStats
+    data::Matrix{Float64}
+    means::Vector{Float64}
+    medians::Vector{Float64}
+    stds::Vector{Float64}
+
+    function PosteriorStats(data::Matrix{Float64})
+        means = vec(mean(data, dims=2))
+        medians = vec(median(data, dims=2))
+        stds = vec(std(data, dims=2))
+        new(data, means, medians, stds)
+    end
+end
+################################################################
+# Helper function for axis creation
+################################################################
+function create_axis!(fig, col, row, param_idx, limits, title_str, is_hist=false)
+    options = Dict(
+        :title => title_str,
+        :xlabel => is_hist ? "prob dens" : (param_idx == 1 ? "iteration" : "iteration"),
+        :ylabel => is_hist ? "" : (param_idx == 1 ? L"w_1" : L"w_2"),
+        :limits => limits,
+    )
+    is_hist && (options[:xticks] = LinearTicks(3))
+    row == 2 && (options[:yticks] = LinearTicks(5))
+    ax = Axis(fig[row, col]; options...)
+    return ax
+end
+
+function plot_trace!(ax, data, param_idx; burnin_gray=true, legend=true)
+    # burnin の背景（一度だけ描画）
+    burnin_gray && vspan!(ax, 0.5, burnin + 0.5, color=(:gray, 0.3), label="burnin phase")
+    lines!(ax, 1:size(data, 2), data[param_idx, :], linewidth=1.5, label="trace")
+    legend && axislegend(ax, position=:rb, backgroundcolor=(:white, 0.5))
+end
+
+function plot_hist_with_stats!(ax, data, stats, param_idx)
+    hist!(ax, data[param_idx, :], direction=:x, normalization=:pdf, bins=50)
+    hlines!(ax, [stats.means[param_idx]], color=MEAN_COLOR)
+    hlines!(ax, [stats.medians[param_idx]], color=MEDIAN_COLOR)
+    μ_pm_σ = stats.means[param_idx] .+ [-1, 1] .* stats.stds[param_idx]
+    hlines!(ax, μ_pm_σ,
+            color=MEAN_COLOR, linestyle=:dash)
+    # ↓ これだとなぜか new world とか
+    # hlines!(ax, stats.means[param_idx] .+ [-1, 1] .* stats.stds[param_idx],
+    #         color=MEAN_COLOR, linestyle=:dash)
+end
+function draw_predictive_linear_function!(ax, data)
+    for i in 1:size(data, 2)
+        w1, w2 = data[1, i], data[2, i]
+        lines!(ax, xs, w1 .* xs .+ w2, color = (:green, 20/max_iter))
+    end
+end
+function generate_logistic(X, μ1, μ2, σ1, σ2) # => Y, f, w1, w2
+    w1 = rand(Normal(μ1, σ1))
+    w2 = rand(Normal(μ2, σ2))
+    f(x) = sig(w1 * x + w2)
+    Y = rand.(Bernoulli.(f.(X)))
+    return Y, f, w1, w2
 end
