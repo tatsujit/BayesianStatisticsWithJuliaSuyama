@@ -400,3 +400,62 @@ function generate_logistic(X, μ1, μ2, σ1, σ2) # => Y, f, w1, w2
     Y = rand.(Bernoulli.(f.(X)))
     return Y, f, w1, w2
 end
+################################################################
+# Alpha (opaqueness) calculation for overplotting
+################################################################
+# 典型オーバーラップ k と目標濃さ tau* から alpha を計算
+alpha_for = function(k; tau_star=0.5)
+    @assert 0 < tau_star < 1
+    return 1 - (1 - tau_star)^(1/k)
+end
+# # N と重なり率 rho から alpha を粗く決める
+# alpha_from_N = function(N; rho=0.1, tau_star=0.5)
+#     k = max(1, round(Int, rho * N))
+#     return alpha_for(k; tau_star=tau_star)
+# end
+# # 例：N=300 本、rho=0.08 のとき
+# α = alpha_from_N(300; rho=0.08, tau_star=0.5)  # ≈ 0.021
+#
+# # Makie: すべての線に同じ α を適用
+# using Colors  # for RGBA
+# col = RGBA(0, 114/255, 178/255, α)  # Okabe–Ito Blue with computed alpha
+# # lines!(ax, xs, ys; color=col) を N 回
+function plot_per_class_scatter!(ax, X, Y, n_class; kwargs...)
+    for i in 1:n_class
+        scatter!(ax, X[i], Y[i],
+                 label = "class $i",
+                 markersize = 18,
+                 color = colors[i],
+                 strokecolor = :black,     # 輪郭線の色
+                 strokewidth = 1.0,        # 線の太さ
+                 ; kwargs...)
+    end
+end
+function plot_per_class_lines!(ax, xs, f, param1, param2, n_class)
+    for i in 1:n_class
+        lines!(ax, xs, f.(xs, param1[i], param2[i]), linewidth = 3, color = colors[i], )
+    end
+end
+function plot_prediction!(axes, param_posterior, n_class, xs; kwargs...)
+    for i in 1:n_class
+        for j in 1:size(param_posterior, 2)
+            w1, w2 = param_posterior[[2+i, 2+i+3], j]
+            lines!(axes[i], xs, w1 .* xs .+ w2, color = (colors[i], alpha_for(30)); kwargs...)
+        end
+    end
+end
+function plot_data!(axes, x_data, y_data, n_class; kwargs...)
+    for i in 1:n_class
+        scatter!(axes[i], x_data[i], y_data[i],
+                 color = (colors[i], 1.0),
+                 strokecolor = :black,     # 輪郭線の色
+                 strokewidth = 1.0,        # 線の太さ
+                 ; kwargs...)
+    end
+end
+function linear_fit(Y, X) # (X, Y) ではない
+    N = length(Y)
+    w1 = sum((Y .- mean(Y)) .* X) / sum((X .- mean(X)) .* X)
+    w2 = mean(Y) - w1 * mean(X)
+    return w1, w2
+end
