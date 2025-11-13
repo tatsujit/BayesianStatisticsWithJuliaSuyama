@@ -357,25 +357,21 @@ end
 # Helper function for axis creation
 ################################################################
 function create_axis!(fig, col, row, param_idx, limits, title_str, is_hist=false)
+    # 問題は：
+    # 1. この関数の引数としては、 param_idx よりもラベルが直接的で良い
+    # 2.
     options = Dict(
         :title => title_str,
-        :xlabel => is_hist ? "prob dens" : (param_idx == 1 ? "iteration" : "iteration"),
+        :xlabel => is_hist ? "prob. dens." : "iteration",
         :ylabel => is_hist ? "" : (param_idx == 1 ? L"w_1" : L"w_2"),
         :limits => limits,
     )
     is_hist && (options[:xticks] = LinearTicks(3))
-    row == 2 && (options[:yticks] = LinearTicks(5))
+    row ∈ [2, 3] && (options[:yticks] = LinearTicks(5)) # hist or trace plots only
     ax = Axis(fig[row, col]; options...)
     return ax
 end
-
-function plot_trace!(ax, data, param_idx; burnin_gray=true, legend=true)
-    # burnin の背景（一度だけ描画）
-    burnin_gray && vspan!(ax, 0.5, burnin + 0.5, color=(:gray, 0.3), label="burnin phase")
-    lines!(ax, 1:size(data, 2), data[param_idx, :], linewidth=1.5, label="trace")
-    legend && axislegend(ax, position=:rb, backgroundcolor=(:white, 0.5))
-end
-
+# こいつの param_idx は axis_config の中の col と同じなのだが
 function plot_hist_with_stats!(ax, data, stats, param_idx)
     hist!(ax, data[param_idx, :], direction=:x, normalization=:pdf, bins=50)
     hlines!(ax, [stats.means[param_idx]], color=MEAN_COLOR)
@@ -386,6 +382,34 @@ function plot_hist_with_stats!(ax, data, stats, param_idx)
     # ↓ これだとなぜか new world とか
     # hlines!(ax, stats.means[param_idx] .+ [-1, 1] .* stats.stds[param_idx],
     #         color=MEAN_COLOR, linestyle=:dash)
+end
+function generate_axis_and_plot!(fig, axis_config)
+    axes_dict = Dict()
+    for (col, row, data, stats, limits, method, use_burnin, param_idx, title_str) in axis_config
+        key = (col, row)
+        # Determine if this is a trace plot or histogram
+        is_hist = (col ∈ [3, 4, 6, 7])
+        # @ic (fig, col, row, param_idx, limits, title_str, is_hist)
+        ax = create_axis!(fig, col, row, param_idx, limits, title_str, is_hist)
+        # @ic (ax, data, stats, param_idx, is_hist)
+        axes_dict[key] = (ax, data, stats, param_idx, is_hist)
+
+        # Plot content
+        if is_hist
+            plot_data = use_burnin ? data[:, burnin+1:end] : data
+            plot_hist_with_stats!(ax, plot_data, stats, param_idx)
+        else
+            plot_trace!(ax, data, param_idx)
+        end
+    end
+    return axes_dict
+end
+
+function plot_trace!(ax, data, param_idx; burnin_gray=true, legend=true)
+    # burnin の背景（一度だけ描画）
+    burnin_gray && vspan!(ax, 0.5, burnin + 0.5, color=(:gray, 0.3), label="burnin phase")
+    lines!(ax, 1:size(data, 2), data[param_idx, :], linewidth=1.5, label="trace")
+    legend && axislegend(ax, position=:rb, backgroundcolor=(:white, 0.5))
 end
 function draw_predictive_linear_function!(ax, data)
     for i in 1:size(data, 2)
@@ -420,7 +444,7 @@ end
 # using Colors  # for RGBA
 # col = RGBA(0, 114/255, 178/255, α)  # Okabe–Ito Blue with computed alpha
 # # lines!(ax, xs, ys; color=col) を N 回
-function plot_per_class_scatter!(ax, X, Y, n_class; kwargs...)
+function plot_per_class_scatter!(ax::Axis, X, Y, n_class; kwargs...)
     for i in 1:n_class
         scatter!(ax, X[i], Y[i],
                  label = "class $i",
@@ -431,9 +455,30 @@ function plot_per_class_scatter!(ax, X, Y, n_class; kwargs...)
                  ; kwargs...)
     end
 end
-function plot_per_class_lines!(ax, xs, f, param1, param2, n_class)
+function plot_per_class_scatter!(axes::AbstractVector{Axis}, X, Y, n_class; kwargs...)
+    for i in 1:n_class
+        scatter!(axes[i], X[i], Y[i],
+                 label = "class $i",
+                 markersize = 18,
+                 color = colors[i],
+                 strokecolor = :black,     # 輪郭線の色
+                 strokewidth = 1.0,        # 線の太さ
+                 ; kwargs...)
+    end
+end
+function plot_per_class_lines!(ax::Axis, xs, f, param1, param2, n_class)
     for i in 1:n_class
         lines!(ax, xs, f.(xs, param1[i], param2[i]), linewidth = 3, color = colors[i], )
+    end
+end
+function plot_per_class_lines!(axes::AbstractVector{Axis}, xs, f, param1, param2, n_class)
+    sample_size = size(param1, 2)
+    @assert sample_size == size(param2, 2)
+    for i in 1:n_class
+        for j in 1:sample_size
+            p1, p2 = param1[i, j], param2[i, j]
+            lines!(axes[i], xs, f.(xs, p1, p2), linewidth = 3, color = color = (colors[i], alpha_for(30)), )
+        end
     end
 end
 function plot_prediction!(axes, param_posterior, n_class, xs; kwargs...)
@@ -458,4 +503,21 @@ function linear_fit(Y, X) # (X, Y) ではない
     w1 = sum((Y .- mean(Y)) .* X) / sum((X .- mean(X)) .* X)
     w2 = mean(Y) - w1 * mean(X)
     return w1, w2
+end
+
+function plot_predictions_per_class!(fig, row, cols,
+                                     algo_str, # "GMH" or "HMC"
+                                     param_posterior, # GMH or HMC
+                                     X_obs,
+                                     Y_obs,
+                                     n_class;
+                                     limits_xy = ((0, 1), (2, 10)),
+                                     xs = range(limits_xy[1]..., 100),
+                                     )
+    axs = [Axis(fig[row, col], xlabel = L"x", ylabel = L"y", limits = limits_xy) for col in cols]
+    # @assert length(axs) == n_class
+    plot_per_class_lines!(axs, xs, lf,
+                          param_posterior[3:5, :], param_posterior[6:8, :],
+                          n_class)
+    plot_per_class_scatter!(axs, X_obs, Y_obs, n_class)
 end

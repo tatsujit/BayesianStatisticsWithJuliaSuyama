@@ -1,9 +1,7 @@
-# TODO plot the hyperpriors and priors
-# TODO plot class-wise predictions
-# TODO p.216 class 1 bigger and flatter → the class-wise predictions
+# note at [[file:-2021-Juliaで作っ.org]]
 #
-disp, save_fig = true, true
-# disp, save_fig = true, false
+# disp, save_fig = true, true
+disp, save_fig = true, false
 # disp, save_fig = false, true
 # disp, save_fig = false, false
 """
@@ -32,9 +30,6 @@ Random.seed!(rseed)
 ################################################################
 # hyperparameters
 ################################################################
-# max_iter = 2_000
-# max_iter = 100
-# max_iter = 300
 burnin = 100
 # burnin = 500
 # burnin = 10^3
@@ -45,45 +40,61 @@ max_iter = burnin + 10^3
 # max_iter = burnin + 15^3
 
 ################################################################
-# plot init
+# plot initialization
 ################################################################
-fig = Figure(
-    size = (1600, 1200),
-    figure_padding = 30,
-)
-
-Label(fig[-2, 1:7],
-      "hierarhical linear regression with MCMC (iteration = $(max_iter), burnin = $burnin)",
-      #, (μ1, μ2, σ1, σ2) =  ($μ1, $μ2, $σ1, $σ2)",
-      fontsize = 20,
-      font = :bold,
-      )
-
+################
+# plot init
+################
 colors = [
     colorant"#0072B2",  # Blue
     colorant"#E69F00",  # Orange
-    colorant"#56B4E9",  # Sky blue
     colorant"#009E73",  # Green
     colorant"#D55E00",  # Vermilion
+    colorant"#56B4E9",  # Sky blue
 ]
-
+fig = Figure(
+    size = (1600, 1200),
+    # figure_padding = 30,
+    figure_padding = 0,
+)
 ################
 # plot rows
 ################
-title_row = 0
-data_and_analytical_row = 1
-mcmc_gmh_row = 2
-mcmc_hmc_row = 3
+row_label_fontsize = 14
+rows = Dict(:title => (0,
+                       "hierarhical Bayes linear regression with MCMC (iteration = $(max_iter), burnin = $burnin)",),
+            :data => (1,
+                      "data and analytical solutions",),
+            :mcmc_gmh => (2,
+                         "MCMC with GMH",),
+            :mcmc_hmc => (3,
+                         "MCMC with HMC",),
+            :prediction_gmh => (4,
+                               "predictions with GMH",),
+            :prediction_hmc => (5,
+                               "predictions with HMC",),
+            :new_prediction_hmc => (6,
+                               "HMC pred. w/ class 1 aug",),
+            )
+for (key, (row_idx, label_text)) in rows
+    if key != :title
+        Label(fig[row_idx, 1], label_text,
+              fontsize = row_label_fontsize,
+              font = :bold,
+              rotation=4π/9, )
+    end
+end
 
-
+################
+# plot title
+################
+Label(fig[rows[:title][1], 1:7], rows[:title][2], fontsize = 20, font = :bold, )
 
 ################################################################
-# parameters
+# hyperparameters
 ################################################################
-μ1 = 0.0
-μ2 = 0.0
-σ1 = 10.0
-σ2 = 10.0
+μ1, μ2 = 0.0, 0.0
+σ1, σ2 = 10.0, 10.0
 σ11, σ12, σ13 = 1.0, 1.0, 1.0
 
 ################################################################
@@ -100,23 +111,28 @@ Y_obs = [[4.0, 3.7],      # class 1
          ]
 n_class = length(X_obs)
 
+X_obs_aug = [[0.1, 0.3, 0.4, 0.5, 0.6, 0.9], # class 1
+             X_obs[2:3]...] # class 2 and 3
+Y_obs_aug = [[4.0, 4.0, 3.7, 3.8, 3.9, 3.7], # class 1
+             Y_obs[2:3]...] # class 2 and 3
+
 ################################################################
 # data plot
 ################################################################
-ax02 = Axis(fig[-1, 2], title = "data (N=$(length(vec(X_obs))))", xlabel = L"x", ylabel = L"y")
+ax02 = Axis(fig[rows[:data][1], 2], title = "data",
+            xlabel = L"x", ylabel = L"y")
 plot_per_class_scatter!(ax02, X_obs, Y_obs, n_class)
 axislegend(ax02, position = :lt)
 
-
-
+# analytical solution (単回帰)
 w1, w2 = linear_fit(vcat(Y_obs...), vcat(X_obs...))
 
-# 個別に回帰
-w1s = zeros(n_class)
-w2s = zeros(n_class)
+# analytical solutions (クラスごとに個別に回帰)
+w1s_analytical = zeros(n_class)
+w2s_analytical = zeros(n_class)
 for i in 1:n_class
     w1_tmp, w2_tmp = linear_fit(Y_obs[i], X_obs[i])
-    w1s[i], w2s[i] = w1_tmp, w2_tmp
+    w1s_analytical[i], w2s_analytical[i] = w1_tmp, w2_tmp
 end
 
 # visualization range
@@ -124,35 +140,44 @@ xs = range(0, 1, 100)
 
 lf(x, w1, w2) = w1 * x + w2
 
-ax03 = Axis(fig[-1, 3],
+ax034 = Axis(fig[rows[:data][1], 3:4],
             title = "(a) single regression",
             xlabel = L"x", ylabel = L"y",
              # limits = limits_s,
              )
-lines!(ax03, xs, lf.(xs, w1, w2), color = :black, linewidth = 3)
-         # [exp(ulp([w1, w2])) + eps() for w1 in w1s, w2 in w2s],
-         # colormap=:jet,  # または :rainbow, :turbo
-         # levels = 10,
-         # linewidth = 1,
-         # labels = true,
-         # )
-ax04 = Axis(fig[-1, 4],
+lines!(ax034, xs, lf.(xs, w1, w2), color = :black, linewidth = 3)
+
+ax05 = Axis(fig[rows[:data][1], 5],
             title = "(b) multiple regression",
             xlabel = L"x", ylabel = L"y",
+            )
+plot_per_class_scatter!(ax034, X_obs, Y_obs, n_class)
+plot_per_class_lines!(ax05, xs, lf, w1s_analytical, w2s_analytical, n_class)
+plot_per_class_scatter!(ax05, X_obs, Y_obs, n_class)
+axislegend(ax02, position = :lt)
+axislegend(ax034, position = :lt)
+axislegend(ax05, position = :lt)
+
+################################################################
+# TODO plot hyperpriors and priors
+################################################################
+w1s = range(-20, 20, 100)
+w2s = range(-20, 20, 100)
+ax06 = Axis(fig[rows[:data][1], 6],
+            # title = L"\text{hyperpriors for }w_1\text{ and} w_2",
+            title = L"\text{hyperprior for }w_1",
+            xlabel = L"w_1", ylabel = L"prob. dens.",
              # limits = limits_s,
              )
+lines!(ax06, w1s, pdf.(Normal.(μ1, σ1), w1s))
+# lines!(ax06, w2s, pdf.(Normal.(μ2, σ2), w2s))
 
-plot_per_class_scatter!(ax03, X_obs, Y_obs, n_class)
-plot_per_class_lines!(ax04, xs, lf, w1s, w2s, n_class)
-plot_per_class_scatter!(ax04, X_obs, Y_obs, n_class)
-# for i in 1:n_class
-#     lines!(ax04, xs, lf.(xs, w1s[i], w2s[i]), linewidth = 3)
-#     scatter!(ax03, X_obs[i], Y_obs[i], label = "class $i", markersize = 18, )
-#     scatter!(ax04, X_obs[i], Y_obs[i], label = "class $i", markersize = 18, )
-# end
-axislegend(ax02, position = :lt)
-axislegend(ax03, position = :lt)
-axislegend(ax04, position = :lt)
+ax07 = Axis(fig[rows[:data][1], 7],
+            title = L"\text{hyperprior for }w_2",
+            xlabel = L"w_2", ylabel = "prob. dens.",
+             # limits = limits_s,
+             )
+lines!(ax07, w2s, pdf.(Normal.(μ2, σ2), w2s))
 
 
 ################################################################
@@ -171,15 +196,17 @@ ulp(w) = hyper_prior(w) + prior(w) + log_likelihood(w, params...)
 # w_init = [w1, w2, w1_1, w1_2, w1_3, w2_1, w2_2, w2_3]
 w_init = randn(8)
 
-
 # ここでもやはり GMH と HMC の両方を実行して比較する
+# param_posterior: (num_params, num_samples)
+# w_init =: μ0 に対応、つまり
+# w_init = [w1, w2, w1_1, w1_2, w1_3, w2_1, w2_2, w2_3]
+# TODO だから index を変換する Dict を作るべき
 param_posterior_GMH, num_accepted_GMH =
     inference_wrapper_GMH(log_joint, params, w_init,
                           max_iter = max_iter, σ=1.0)
 param_posterior_HMC, num_accepted_HMC =
     inference_wrapper_HMC(log_joint, params, w_init,
                           max_iter = max_iter, L=10, ε=1e-1)
-
 
 # Create posterior stats objects
 pp_GMH_all = PosteriorStats(param_posterior_GMH)
@@ -190,10 +217,11 @@ pp_HMC_bi = PosteriorStats(param_posterior_HMC[:, burnin+1:end])
 ################################################################
 # plot predictions for each class with GMH
 ################################################################
+limits_xy = ((0, 1), (2, 10))
 axes_prediction_GMH = [
-    Axis(fig[0, 2]),
-    Axis(fig[0, 3:4]),
-    Axis(fig[0, 5]),
+    Axis(fig[rows[:prediction_gmh][1], 2], limits = limits_xy),
+    Axis(fig[rows[:prediction_gmh][1], 3:4], limits = limits_xy),
+    Axis(fig[rows[:prediction_gmh][1], 5], limits = limits_xy),
 ]
 plot_prediction!(axes_prediction_GMH, param_posterior_GMH, n_class, xs)#; color = (:blue, 0.01))
 plot_data!(axes_prediction_GMH, X_obs, Y_obs, n_class; markersize=18)#; color = (:red, 1.0))
@@ -202,9 +230,9 @@ plot_data!(axes_prediction_GMH, X_obs, Y_obs, n_class; markersize=18)#; color = 
 # plot predictions for each class with HMC
 ################################################################
 axes_prediction_HMC = [
-    Axis(fig[4, 2]),
-    Axis(fig[4, 3:4]),
-    Axis(fig[4, 5]),
+    Axis(fig[rows[:prediction_hmc][1], 2], limits = limits_xy),
+    Axis(fig[rows[:prediction_hmc][1], 3:4], limits = limits_xy),
+    Axis(fig[rows[:prediction_hmc][1], 5], limits = limits_xy),
 ]
 plot_prediction!(axes_prediction_HMC, param_posterior_HMC, n_class, xs)#; color = (:blue, 0.01))
 plot_data!(axes_prediction_HMC, X_obs, Y_obs, n_class; markersize=18)#; color = (:red, 1.0))
@@ -220,81 +248,58 @@ w2_limits = ((-5, 10), (0, 1.5)) # for rotated hist
 w1_limits_yx = (w1_limits[2], w1_limits[1])
 w2_limits_yx = (w2_limits[2], w2_limits[1])
 
+# ここでは length(w_init) == 8 あるパラメータについて、どれを使うかプロットするか、は、 param_idx で明示的に指定
 # Axis parameters: (col, row, data, stats, with_burnin, method_name, acceptance_rate)
 # const AXIS_CONFIG = [
 AXIS_CONFIG = [
-    # (col, row, posterior, stats, w_limits, title_suffix, use_burnin, acceptance_info)
-    (2, 1, param_posterior_GMH, pp_GMH_all, (nothing, w1_limits[1]), "GMH", false, L"w_1\text{ sequence (GMH), acceptance rate = }%$(round(num_accepted_GMH/max_iter, sigdigits=2))"),
-    (2, 2, param_posterior_GMH, pp_GMH_all, (nothing, w2_limits[1]), "GMH", false, L"w_2\text{ sequence (GMH)}"),
-    (3, 1, param_posterior_GMH, pp_GMH_all, w1_limits_yx, "hist", false, "hist"),
-    (3, 2, param_posterior_GMH, pp_GMH_all, w2_limits_yx, "hist", false, "hist"),
-    (4, 1, param_posterior_GMH, pp_GMH_bi, w1_limits_yx, "hist", true, "hist with burnin=$burnin removed"),
-    (4, 2, param_posterior_GMH, pp_GMH_bi, w2_limits_yx, "hist", true, "hist with burnin=$burnin removed"),
-    (5, 1, param_posterior_HMC, pp_HMC_all, (nothing, w1_limits[1]), "HMC", false, L"w_1\text{ sequence (HMC), acceptance rate = }%$(round(num_accepted_HMC/max_iter, sigdigits=2))"),
-    (5, 2, param_posterior_HMC, pp_HMC_all, (nothing, w2_limits[1]), "HMC", false, L"w_2\text{ sequence (HMC)}"),
-    (6, 1, param_posterior_HMC, pp_HMC_all, w1_limits_yx, "hist", false, "hist"),
-    (6, 2, param_posterior_HMC, pp_HMC_all, w2_limits_yx, "hist", false, "hist"),
-    (7, 1, param_posterior_HMC, pp_HMC_bi, w1_limits_yx, "hist", true, "hist with burnin=$burnin considered"),
-    (7, 2, param_posterior_HMC, pp_HMC_bi, w2_limits_yx, "hist", true, "hist with burnin=$burnin considered"),
+    # (col, row,            posterior,           trace,      w_limits,        title_suffix, use_burnin, param_idx
+    # acceptance_info)
+    (2, rows[:mcmc_gmh][1], param_posterior_GMH, pp_GMH_all, (nothing, w1_limits[1]), "GMH", false, 1,
+     L"w_1\text{ sequence (GMH), acceptance rate = }%$(round(num_accepted_GMH/max_iter, sigdigits=2))"),
+    (3, rows[:mcmc_gmh][1], param_posterior_GMH, pp_GMH_all, w1_limits_yx, "hist", false, 1, "hist", ),
+    (4, rows[:mcmc_gmh][1], param_posterior_GMH, pp_GMH_bi, w1_limits_yx, "hist", true, 1, "hist with burnin=$burnin removed"),
+    (5, rows[:mcmc_gmh][1], param_posterior_GMH, pp_GMH_all, (nothing, w2_limits[1]), "GMH", false, 2, L"w_2\text{ sequence (GMH)}"),
+    (6, rows[:mcmc_gmh][1], param_posterior_GMH, pp_GMH_all, w2_limits_yx, "hist", false, 2, "hist"),
+    (7, rows[:mcmc_gmh][1], param_posterior_GMH, pp_GMH_bi, w2_limits_yx, "hist", true, 2, "hist with burnin=$burnin removed"),
+    (2, rows[:mcmc_hmc][1], param_posterior_HMC, pp_HMC_all, (nothing, w1_limits[1]), "HMC", false, 1,
+     L"w_1\text{ sequence (HMC), acceptance rate = }%$(round(num_accepted_HMC/max_iter, sigdigits=2))", ),
+    (3, rows[:mcmc_hmc][1], param_posterior_HMC, pp_HMC_all, w1_limits_yx, "hist", false, 1, "hist"),
+    (4, rows[:mcmc_hmc][1], param_posterior_HMC, pp_HMC_bi, w1_limits_yx, "hist", true, 1, "hist with burnin=$burnin considered"),
+    (5, rows[:mcmc_hmc][1], param_posterior_HMC, pp_HMC_all, (nothing, w2_limits[1]), "HMC", false, 2, L"w_2\text{ sequence (HMC)}"),
+    (6, rows[:mcmc_hmc][1], param_posterior_HMC, pp_HMC_all, w2_limits_yx, "hist", false, 2, "hist"),
+    (7, rows[:mcmc_hmc][1], param_posterior_HMC, pp_HMC_bi, w2_limits_yx, "hist", true, 2, "hist with burnin=$burnin considered"),
 ]
-
-################################################################
-# Helper function for axis creation
-################################################################
-# function create_axis!(fig, col, row, param_idx, limits, title_str, is_hist=false)
-# function plot_trace!(ax, data, param_idx)
-# function plot_hist_with_stats!(ax, data, stats, param_idx)
-
+# length(AXIS_CONFIG) # 12
+@assert length.([c for c in AXIS_CONFIG]) == fill(9, 12)# 9x12
 ################################################################
 # Generate all axes programmatically
 ################################################################
-axes_dict = Dict()
-
-for (col, row, data, stats, limits, method, use_burnin, title_str) in AXIS_CONFIG
-    param_idx = row
-    key = (col, row)
-
-    # Determine if this is a trace plot or histogram
-    is_hist = (col ∈ [3, 4, 6, 7])
-    # @ic (fig, col, row, param_idx, limits, title_str, is_hist)
-    ax = create_axis!(fig, col, row, param_idx, limits, title_str, is_hist)
-    # @ic (ax, data, stats, param_idx, is_hist)
-    axes_dict[key] = (ax, data, stats, param_idx, is_hist)
-
-    # Plot content
-    if is_hist
-        plot_data = use_burnin ? data[:, burnin+1:end] : data
-        plot_hist_with_stats!(ax, plot_data, stats, param_idx)
-    else
-        plot_trace!(ax, data, param_idx)
-    end
-end
-
+generate_axis_and_plot!(fig, AXIS_CONFIG)
 
 ################################################################
 # predictive dist.
 ################################################################
-limits_xy = ((-2, 2), (0, 15))
+# limits_xy = ((-2, 2), (0, 15))
 xs = range(limits_xy[1]..., 100)
 
-ax32 = Axis(fig[3, 2],
+ax32 = Axis(fig[rows[:prediction_gmh][1], 6],
             title = "predictive distributions (GMH)",
             xlabel = L"x", ylabel = L"y",
             limits = limits_xy,
-            xautolimitmargin = (0.1, 0.1),  # x軸に10%のマージン # TODO 効いてなさそう
-            yautolimitmargin = (0.1, 0.1),  # y軸に10%のマージン # TODO 効いてなさそう
+            # xautolimitmargin = (0.1, 0.1),  # x軸に10%のマージン # TODO 効いてなさそう
+            # yautolimitmargin = (0.1, 0.1),  # y軸に10%のマージン # TODO 効いてなさそう
             )
-ax334 = Axis(fig[3, 3:4],
+ax334 = Axis(fig[rows[:prediction_gmh][1], 7],
             title = "prediction (GMH)",
             xlabel = L"x", ylabel = L"y",
             limits = limits_xy,
             )
-ax35 = Axis(fig[3, 5],
+ax35 = Axis(fig[rows[:prediction_hmc][1], 6],
             title = "predictive distributions (HMC)",
             xlabel = L"x", ylabel = L"y",
             limits = limits_xy,
             )
-ax367 = Axis(fig[3, 6:7],
+ax367 = Axis(fig[rows[:prediction_hmc][1], 7],
             title = "prediction (HMC)",
             xlabel = L"x", ylabel = L"y",
             limits = limits_xy,
@@ -312,48 +317,60 @@ for i in 1:size(param_posterior_GMH, 2)
     plot_per_class_scatter!(ax35, X_obs, Y_obs, n_class)#; kwargs...)
 end
 
+plot_per_class_scatter!(ax334, X_obs, Y_obs, n_class)
+plot_per_class_lines!(ax334, xs, lf, w1s_analytical, w2s_analytical, n_class)
+plot_per_class_scatter!(ax367, X_obs, Y_obs, n_class)
+plot_per_class_lines!(ax367, xs, lf, w1s_analytical, w2s_analytical, n_class)
+
 lines!(ax334, xs, mean(fs_GMH), label = "prediction", linewidth = 5)
 lines!(ax367, xs, mean(fs_HMC), label = "prediction", linewidth = 5)
 
-plot_per_class_scatter!(ax334, X_obs, Y_obs, n_class)
-plot_per_class_lines!(ax334, xs, lf, w1s, w2s, n_class)
-plot_per_class_scatter!(ax367, X_obs, Y_obs, n_class)
-plot_per_class_lines!(ax367, xs, lf, w1s, w2s, n_class)
+axislegend(ax334, position = :lt, backgroundcolor = (:white, 0.5))
+axislegend(ax367, position = :lt, backgroundcolor = (:white, 0.5))
 
-axislegend(ax334, position = :lt)
-axislegend(ax367, position = :lt)
-# scatter!(ax334, X_obs, Y_obs, label = "data", color = :blue)
-# scatter!(ax367, X_obs, Y_obs, label = "data", color = :blue)
+################################################################
+# classs 1 augmented data, prediction with HMC
+################################################################
+log_joint_aug(w, X, Y) = hyper_prior(w) + prior(w) + log_likelihood(Y_obs_aug, X_obs_aug, w)
+params = (Y_obs_aug, X_obs_aug)
+ulp(w) = hyper_prior(w) + prior(w) + log_likelihood(w, params...)
+
+# w_init = [w1, w2, w1_1, w1_2, w1_3, w2_1, w2_2, w2_3]
+# w_init = randn(8)
+param_posterior_HMC_aug, num_accepted_HMC_aug =
+    inference_wrapper_HMC(log_joint_aug, params, w_init,
+                          max_iter = max_iter, L=10, ε=1e-1)
+
+# Create posterior stats objects
+# pp_HMC_all_aug = PosteriorStats(param_posterior_HMC_aug)
+# pp_HMC_bi_aug = PosteriorStats(param_posterior_HMC_aug[:, burnin+1:end])
+
+plot_predictions_per_class!(fig, rows[:new_prediction_hmc][1], [2:2, 3:4, 5:5], "HMC",
+                            param_posterior_HMC_aug, X_obs_aug, Y_obs_aug, n_class)
 
 
 ################################################################
 # layout adjustment
 ################################################################
-col_sizes = [(1, 0.0),
-             (2, 0.3), (3, 0.1), (4, 0.1),
-             (5, 0.3), (6, 0.1), (7, 0.1),
-             ]
-n_rows = 6
+col_sizes = [
+    (1, 0.06),
+    (2, 0.25), (3, 0.11), (4, 0.11),
+    (5, 0.25), (6, 0.11), (7, 0.11),
+]
+n_rows = length(rows)-1
 # row_sizes = [(i, 1/n_rows) for i in 1:n_rows]
-row_sizes = [(i, 1/n_rows) for i in -1:n_rows-2]
-map(col_sizes) do cs
-    idx, rel_size = cs
+row_sizes = vcat([(0, 0.1/1.1)], # 1.1 で割って全体を1.0に収める
+                 [(i, 1/n_rows/1.1) for i in 1:n_rows] # 1.1 で割って全体を1.0に収める
+                 )
+map(col_sizes) do (idx, rel_size)
+    # map(col_sizes) do cs
+    #     idx, rel_size = cs
     colsize!(fig.layout, idx, Relative(rel_size))
 end
 map(row_sizes) do rs
     idx, rel_size = rs
     rowsize!(fig.layout, idx, Relative(rel_size))
 end
-
-############################################################
-# common labels
-############################################################
-
-Label(fig[-1, 0], "GMH", fontsize = 16, font = :bold, rotation=π/2, )
-Label(fig[3, 0], "HMC", fontsize = 16, font = :bold, rotation=π/2, )
-# Label(fig[0, 0], "GMH", fontsize = 16, font = :bold, rotation=π/2, )
-# Label(fig[1, 0], "HMC", fontsize = 16, font = :bold, rotation=π/2, )
-
 
 ################################################################
 # display and save plot
