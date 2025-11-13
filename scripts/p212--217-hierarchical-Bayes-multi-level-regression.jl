@@ -30,21 +30,25 @@ Random.seed!(rseed)
 ################################################################
 # hyperparameters
 ################################################################
+@ic "# hyperparameters"
+
 burnin = 100
 # burnin = 500
 # burnin = 10^3
-# max_iter = burnin + 5 * 10^3
-max_iter = burnin + 10^3
+max_iter = burnin + 5 * 10^2
+# max_iter = burnin + 10^3 # this is pretty heavy for this code
 # max_iter = burnin + 10^2
 # max_iter = burnin + 15^2
-# max_iter = burnin + 15^3
+# max_iter = burnin + 15^3 # this is pretty heavy for this code
 
 ################################################################
 # plot initialization
 ################################################################
+@ic "plot initialization"
 ################
 # plot init
 ################
+@ic "plot init"
 colors = [
     colorant"#0072B2",  # Blue
     colorant"#E69F00",  # Orange
@@ -60,6 +64,8 @@ fig = Figure(
 ################
 # plot rows
 ################
+@ic "plot rows"
+
 row_label_fontsize = 14
 rows = Dict(:title => (0,
                        "hierarhical Bayes linear regression with MCMC (iteration = $(max_iter), burnin = $burnin)",),
@@ -88,11 +94,13 @@ end
 ################
 # plot title
 ################
+@ic "plot title"
 Label(fig[rows[:title][1], 1:7], rows[:title][2], fontsize = 20, font = :bold, )
 
 ################################################################
 # hyperparameters
 ################################################################
+@ic "hyperparameters"
 μ1, μ2 = 0.0, 0.0
 σ1, σ2 = 10.0, 10.0
 σ11, σ12, σ13 = 1.0, 1.0, 1.0
@@ -100,6 +108,7 @@ Label(fig[rows[:title][1], 1:7], rows[:title][2], fontsize = 20, font = :bold, )
 ################################################################
 # data
 ################################################################
+@ic "data"
 # 学習データ
 X_obs = [[0.3, 0.4],      # class 1
          [0.2, 0.4, 0.9], # class 2
@@ -119,6 +128,8 @@ Y_obs_aug = [[4.0, 4.0, 3.7, 3.8, 3.9, 3.7], # class 1
 ################################################################
 # data plot
 ################################################################
+@ic "data plot"
+
 ax02 = Axis(fig[rows[:data][1], 2], title = "data",
             xlabel = L"x", ylabel = L"y")
 plot_per_class_scatter!(ax02, X_obs, Y_obs, n_class)
@@ -161,6 +172,8 @@ axislegend(ax05, position = :lt)
 ################################################################
 # TODO plot hyperpriors and priors
 ################################################################
+@ic "TODO plot hyperpriors and priors"
+
 w1s = range(-20, 20, 100)
 w2s = range(-20, 20, 100)
 ax06 = Axis(fig[rows[:data][1], 6],
@@ -181,8 +194,10 @@ lines!(ax07, w2s, pdf.(Normal.(μ2, σ2), w2s))
 
 
 ################################################################
-# 対数同時分布の設計
+# designing log-joint-dist
 ################################################################
+@ic "designing log-joint-dist"
+
 @views hyper_prior(w) = logpdf(Normal(μ1, σ1), w[1]) +
     logpdf(Normal(μ2, σ2), w[2])
 @views prior(w) = sum(logpdf.(Normal.(w[1], σ11), w[3:5])) +
@@ -217,6 +232,8 @@ pp_HMC_bi = PosteriorStats(param_posterior_HMC[:, burnin+1:end])
 ################################################################
 # plot predictions for each class with GMH
 ################################################################
+@ic "plot predictions for each class with GMH"
+
 limits_xy = ((0, 1), (2, 10))
 axes_prediction_GMH = [
     Axis(fig[rows[:prediction_gmh][1], 2], limits = limits_xy),
@@ -229,6 +246,8 @@ plot_data!(axes_prediction_GMH, X_obs, Y_obs, n_class; markersize=18)#; color = 
 ################################################################
 # plot predictions for each class with HMC
 ################################################################
+@ic "plot predictions for each class with HMC"
+
 axes_prediction_HMC = [
     Axis(fig[rows[:prediction_hmc][1], 2], limits = limits_xy),
     Axis(fig[rows[:prediction_hmc][1], 3:4], limits = limits_xy),
@@ -240,6 +259,8 @@ plot_data!(axes_prediction_HMC, X_obs, Y_obs, n_class; markersize=18)#; color = 
 ################################################################
 # Metaprogramming: generate axis configurations
 ################################################################
+@ic "Metaprogramming: generate axis configurations"
+
 const MEAN_COLOR = :red
 const MEDIAN_COLOR = :purple
 
@@ -274,11 +295,13 @@ AXIS_CONFIG = [
 ################################################################
 # Generate all axes programmatically
 ################################################################
+@ic "Generate all axes programmatically"
 generate_axis_and_plot!(fig, AXIS_CONFIG)
 
 ################################################################
 # predictive dist.
 ################################################################
+@ic "predictive dist."
 # limits_xy = ((-2, 2), (0, 15))
 xs = range(limits_xy[1]..., 100)
 
@@ -329,8 +352,10 @@ axislegend(ax334, position = :lt, backgroundcolor = (:white, 0.5))
 axislegend(ax367, position = :lt, backgroundcolor = (:white, 0.5))
 
 ################################################################
-# classs 1 augmented data, prediction with HMC
+# class 1 augmented data, prediction with HMC
 ################################################################
+@ic "class 1 augmented data, prediction with HMC"
+
 log_joint_aug(w, X, Y) = hyper_prior(w) + prior(w) + log_likelihood(Y_obs_aug, X_obs_aug, w)
 params = (Y_obs_aug, X_obs_aug)
 ulp(w) = hyper_prior(w) + prior(w) + log_likelihood(w, params...)
@@ -348,10 +373,48 @@ param_posterior_HMC_aug, num_accepted_HMC_aug =
 plot_predictions_per_class!(fig, rows[:new_prediction_hmc][1], [2:2, 3:4, 5:5], "HMC",
                             param_posterior_HMC_aug, X_obs_aug, Y_obs_aug, n_class)
 
+ax66 = Axis(fig[rows[:new_prediction_hmc][1], 6],
+            title = "predictive distributions (HMC)",
+            xlabel = L"x", ylabel = L"y",
+            limits = limits_xy,
+            )
+ax67 = Axis(fig[rows[:new_prediction_hmc][1], 7],
+            title = "prediction (HMC)",
+            xlabel = L"x", ylabel = L"y",
+            limits = limits_xy,
+            )
+
+fs_HMC_aug = []
+for i in 1:size(param_posterior_HMC_aug, 2)
+    @ic i
+    w1h, w2h = param_posterior_HMC_aug[:, i]
+    i == size(param_posterior_HMC_aug, 2) && @ic i
+    f(x) = (w1h * x + w2h)
+    i == size(param_posterior_HMC_aug, 2) && @ic i
+    push!(fs_HMC_aug, f.(xs))
+    i == size(param_posterior_HMC_aug, 2) && @ic i
+    lines!(ax66, xs, f.(xs), color = (:purple, 50/max_iter))
+    i == size(param_posterior_HMC_aug, 2) && @ic i
+    plot_per_class_scatter!(ax66, X_obs_aug, Y_obs_aug, n_class)#; kwargs...)
+    i == size(param_posterior_HMC_aug, 2) && @ic i
+    plot_per_class_scatter!(ax67, X_obs_aug, Y_obs_aug, n_class)#; kwargs...)
+    i == size(param_posterior_HMC_aug, 2) && @ic i
+end
+
+@ic "a"
+lines!(ax67, xs, mean(fs_HMC), label = "prediction", linewidth = 5)
+@ic "a"
+# axislegend(ax66, position = :lt, backgroundcolor = (:white, 0.5))
+# @ic "a"
+# axislegend(ax67, position = :lt, backgroundcolor = (:white, 0.5))
+# @ic "a"
+
 
 ################################################################
 # layout adjustment
 ################################################################
+@ic "layout adjustment"
+
 col_sizes = [
     (1, 0.06),
     (2, 0.25), (3, 0.11), (4, 0.11),
@@ -375,8 +438,11 @@ end
 ################################################################
 # display and save plot
 ################################################################
+@ic "display and save plot"
 
 disp && fig |> display
 # save_fig && safesave(plotsdir(program_name * "_colorscheme=" * cs * "_.pdf"), fig)
 # save_fig && safesave(plotsdir(program_name * ".pdf"), fig)
 save_fig && safesave(plotsdir(program_name * "_max_iter=$max_iter" * "_.pdf"), fig)
+
+@ic "end"
