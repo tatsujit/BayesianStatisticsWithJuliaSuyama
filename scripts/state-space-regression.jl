@@ -42,6 +42,94 @@ Y_obs = [67, 64, 60, 60, 57, 54, 51, 51, 49, 63,
 σ_w = 100.0
 
 
+################################################################
+# plot init
+################################################################
+unit_figsize = 100
+fig_x, fig_y = 16, 12
+
+fig = Figure(
+    size = (fig_x * unit_figsize, fig_y * unit_figsize),
+    figure_padding = 30,
+)
+
+Label(fig[0, 1:fig_x],
+      "aaa",
+      # "hierarhical linear regression with MCMC (iteration = $(max_iter), burnin = $burnin)",
+      #, (μ1, μ2, σ1, σ2) =  ($μ1, $μ2, $σ1, $σ2)",
+      fontsize = 20,
+      font = :bold,
+      )
+
+colors = [
+    colorant"#0072B2",  # Blue
+    colorant"#E69F00",  # Orange
+    colorant"#D55E00",  # Vermilion
+    colorant"#56B4E9",  # Sky blue
+    colorant"#009E73",  # Green
+]
+
+################################################################
+# data plot
+################################################################
+ax1 = Axis(fig[1:div(fig_y, 2), 1:div(fig_x, 2)], title = "data (N=$(length(vec(Z_obs))))", xlabel = L"z", ylabel = L"y")
+plot_per_class_scatter!(ax1, [Z_obs], [Y_obs], 1; # only one class, so []'ed
+                        )
+axislegend(ax1, position = :lt)
+
+ax2 = Axis(fig[div(fig_y, 2):fig_y, 1:div(fig_x, 2)], title = "data (N=$(length(vec(Z_obs))))", xlabel = L"z", ylabel = L"y")
+lines!(ax2, )
+
+
+# w1, w2 = linear_fit(vcat(Y_obs...), vcat(X_obs...))
+
+# # 個別に回帰
+# w1s = zeros(n_class)
+# w2s = zeros(n_class)
+# for i in 1:n_class
+#     w1_tmp, w2_tmp = linear_fit(Y_obs[i], X_obs[i])
+#     w1s[i], w2s[i] = w1_tmp, w2_tmp
+# end
+
+# # visualization range
+# xs = range(0, 1, 100)
+
+# lf(x, w1, w2) = w1 * x + w2
+
+# ax03 = Axis(fig[-1, 3],
+#             title = "(a) single regression",
+#             xlabel = L"x", ylabel = L"y",
+#              # limits = limits_s,
+#              )
+# lines!(ax03, xs, lf.(xs, w1, w2), color = :black, linewidth = 3)
+#          # [exp(ulp([w1, w2])) + eps() for w1 in w1s, w2 in w2s],
+#          # colormap=:jet,  # または :rainbow, :turbo
+#          # levels = 10,
+#          # linewidth = 1,
+#          # labels = true,
+#          # )
+# ax04 = Axis(fig[-1, 4],
+#             title = "(b) multiple regression",
+#             xlabel = L"x", ylabel = L"y",
+#              # limits = limits_s,
+#              )
+
+# plot_per_class_scatter!(ax03, X_obs, Y_obs, n_class)
+# plot_per_class_lines!(ax04, xs, lf, w1s, w2s, n_class)
+# plot_per_class_scatter!(ax04, X_obs, Y_obs, n_class)
+# # for i in 1:n_class
+# #     lines!(ax04, xs, lf.(xs, w1s[i], w2s[i]), linewidth = 3)
+# #     scatter!(ax03, X_obs[i], Y_obs[i], label = "class $i", markersize = 18, )
+# #     scatter!(ax04, X_obs[i], Y_obs[i], label = "class $i", markersize = 18, )
+# # end
+# axislegend(ax02, position = :lt)
+# axislegend(ax03, position = :lt)
+# axislegend(ax04, position = :lt)
+
+################################################################
+# calc
+################################################################
+
 prior(w, σ_w) = logpdf(MvNormal(zeros(2), σ_w * I), w)
 
 @views transition(X, σ0, σ_x) =
@@ -68,94 +156,6 @@ samples, num_accepted =
     inference_wrapper_HMC(log_joint, params, x_init,
                           max_iter = max_iter, L=100, ε=1e-2)
 println("acceptance_rate = $(num_accepted/max_iter)")
-
-################################################################
-# plot init
-################################################################
-################
-# plot rows
-################
-title_row = 0
-data_and_analytical_row = 1
-mcmc_gmh_row = 2
-mcmc_hmc_row = 3
-prediction_gmh_row = 4
-prediction_hmc_row = 5
-
-fig = Figure(
-    size = (1600, 1200),
-    figure_padding = 30,
-)
-
-Label(fig[-2, 1:7],
-      "aaa",
-      # "hierarhical linear regression with MCMC (iteration = $(max_iter), burnin = $burnin)",
-      #, (μ1, μ2, σ1, σ2) =  ($μ1, $μ2, $σ1, $σ2)",
-      fontsize = 20,
-      font = :bold,
-      )
-
-colors = [
-    colorant"#0072B2",  # Blue
-    colorant"#E69F00",  # Orange
-    colorant"#D55E00",  # Vermilion
-    colorant"#56B4E9",  # Sky blue
-    colorant"#009E73",  # Green
-]
-
-################################################################
-# data plot
-################################################################
-ax02 = Axis(fig[-1, 2], title = "data (N=$(length(vec(X_obs))))", xlabel = L"x", ylabel = L"y")
-plot_per_class_scatter!(ax02, X_obs, Y_obs, n_class)
-axislegend(ax02, position = :lt)
-
-
-
-w1, w2 = linear_fit(vcat(Y_obs...), vcat(X_obs...))
-
-# 個別に回帰
-w1s = zeros(n_class)
-w2s = zeros(n_class)
-for i in 1:n_class
-    w1_tmp, w2_tmp = linear_fit(Y_obs[i], X_obs[i])
-    w1s[i], w2s[i] = w1_tmp, w2_tmp
-end
-
-# visualization range
-xs = range(0, 1, 100)
-
-lf(x, w1, w2) = w1 * x + w2
-
-ax03 = Axis(fig[-1, 3],
-            title = "(a) single regression",
-            xlabel = L"x", ylabel = L"y",
-             # limits = limits_s,
-             )
-lines!(ax03, xs, lf.(xs, w1, w2), color = :black, linewidth = 3)
-         # [exp(ulp([w1, w2])) + eps() for w1 in w1s, w2 in w2s],
-         # colormap=:jet,  # または :rainbow, :turbo
-         # levels = 10,
-         # linewidth = 1,
-         # labels = true,
-         # )
-ax04 = Axis(fig[-1, 4],
-            title = "(b) multiple regression",
-            xlabel = L"x", ylabel = L"y",
-             # limits = limits_s,
-             )
-
-plot_per_class_scatter!(ax03, X_obs, Y_obs, n_class)
-plot_per_class_lines!(ax04, xs, lf, w1s, w2s, n_class)
-plot_per_class_scatter!(ax04, X_obs, Y_obs, n_class)
-# for i in 1:n_class
-#     lines!(ax04, xs, lf.(xs, w1s[i], w2s[i]), linewidth = 3)
-#     scatter!(ax03, X_obs[i], Y_obs[i], label = "class $i", markersize = 18, )
-#     scatter!(ax04, X_obs[i], Y_obs[i], label = "class $i", markersize = 18, )
-# end
-axislegend(ax02, position = :lt)
-axislegend(ax03, position = :lt)
-axislegend(ax04, position = :lt)
 
 
 
