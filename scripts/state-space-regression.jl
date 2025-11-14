@@ -44,6 +44,30 @@ Y_obs = [67, 64, 60, 60, 57, 54, 51, 51, 49, 63,
 
 prior(w, σ_w) = logpdf(MvNormal(zeros(2), σ_w * I), w)
 
+@views transition(X, σ0, σ_x) =
+    logpdf(Normal(0, σ0), X[1]) +
+    sum(logpdf.(Normal.(X[1:N-1], σ_x), X[2:N]))
+
+@views observation(X, Y, Z, w) =
+    sum(logpdf.(Normal.(w[1] * Z .+ w[2] + X, σ_y), Y))
+
+log_joint_tmp(X, w, Y, Z, σ_w, σ0, σ_x) =
+    transition(X, σ0, σ_x) +
+    observation(X, Y, Z, w) + prior(w, σ_w)
+@views log_joint(X_vec, Y, Z, σ_w, σ0, σ_x) =
+    transition(X_vec[1:N], σ0, σ_x) +
+    observation(X_vec[1:N], Y, Z, X_vec[N+1:N+2]) +
+    prior(X_vec[N+1:N+2], σ_w)
+σ0 = σ1
+params = (Y_obs, Z_obs, σ_w, σ0, σ_x)
+
+# HMC
+x_init = randn(N+2)
+max_iter = 1_000
+samples, num_accepted =
+    inference_wrapper_HMC(log_joint, params, x_init,
+                          max_iter = max_iter, L=100, ε=1e-2)
+println("acceptance_rate = $(num_accepted/max_iter)")
 
 ################################################################
 # plot init
@@ -64,7 +88,8 @@ fig = Figure(
 )
 
 Label(fig[-2, 1:7],
-      "hierarhical linear regression with MCMC (iteration = $(max_iter), burnin = $burnin)",
+      "aaa",
+      # "hierarhical linear regression with MCMC (iteration = $(max_iter), burnin = $burnin)",
       #, (μ1, μ2, σ1, σ2) =  ($μ1, $μ2, $σ1, $σ2)",
       fontsize = 20,
       font = :bold,
