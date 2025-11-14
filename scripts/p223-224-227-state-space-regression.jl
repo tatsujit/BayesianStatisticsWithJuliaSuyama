@@ -41,10 +41,12 @@ Y_obs = [67, 64, 60, 60, 57, 54, 51, 51, 49, 63,
 σ_y = 0.5
 σ_w = 100.0
 
+ts = 1:length(Y_obs)
 
 ################################################################
 # plot init
 ################################################################
+@ic "plot init"
 unit_figsize = 100
 fig_x, fig_y = 16, 12
 
@@ -63,23 +65,22 @@ Label(fig[0, 1:fig_x],
 
 colors = [
     colorant"#0072B2",  # Blue
-    colorant"#E69F00",  # Orange
     colorant"#D55E00",  # Vermilion
     colorant"#56B4E9",  # Sky blue
     colorant"#009E73",  # Green
+    colorant"#E69F00",  # Orange
 ]
 
 ################################################################
 # data plot
 ################################################################
+@ic "data plot"
 ax1 = Axis(fig[1:div(fig_y, 2), 1:div(fig_x, 2)], title = "data (N=$(length(vec(Z_obs))))", xlabel = L"z", ylabel = L"y")
 plot_per_class_scatter!(ax1, [Z_obs], [Y_obs], 1; # only one class, so []'ed
                         )
 axislegend(ax1, position = :lt)
 
-ax2 = Axis(fig[div(fig_y, 2):fig_y, 1:div(fig_x, 2)], title = "data (N=$(length(vec(Z_obs))))", xlabel = L"z", ylabel = L"y")
-lines!(ax2, )
-
+ax2 = Axis(fig[1:div(fig_y, 2), div(fig_x, 2)+1:fig_x], title = "data (N=$(length(vec(Z_obs))))", xlabel = L"z", ylabel = L"y")
 
 # w1, w2 = linear_fit(vcat(Y_obs...), vcat(X_obs...))
 
@@ -129,6 +130,7 @@ lines!(ax2, )
 ################################################################
 # calc
 ################################################################
+@ic "calc"
 
 prior(w, σ_w) = logpdf(MvNormal(zeros(2), σ_w * I), w)
 
@@ -152,13 +154,56 @@ params = (Y_obs, Z_obs, σ_w, σ0, σ_x)
 # HMC
 x_init = randn(N+2)
 max_iter = 1_000
+# max_iter = 10
 samples, num_accepted =
     inference_wrapper_HMC(log_joint, params, x_init,
                           max_iter = max_iter, L=100, ε=1e-2)
 println("acceptance_rate = $(num_accepted/max_iter)")
 
+################################################################
+# plot inference results
+################################################################
+@ic "plot inference results"
 
+# explained by regression
+for i in 1:max_iter
+    w1, w2 = samples[[N+1, N+2], i]
+    lines!(ax2, ts, w1 .* Z_obs .+ w2,
+           color = (colors[3], alpha_for(10)),
+           linewidth = 1,
+           # label = i==1 ? "regression lines" : nothing,
+           )
+end
 
+# explained by state variable
+for i in 1:max_iter
+    X = samples[1:N, i]
+    lines!(ax2, ts, X,
+           color = (colors[4], alpha_for(10)),
+           linewidth = 1,
+           )
+end
+
+# the sum of regression and state variable
+for i in 1:max_iter
+    w1, w2 = samples[[N+1, N+2], i]
+    X = samples[1:N, i]
+    lines!(ax2, ts, w1 .* Z_obs .+ w2 .+ X,
+           color = (colors[5], alpha_for(10)),
+           linewidth = 1,
+           )
+end
+
+# observations
+lines!(ax2, ts, Y_obs, color = colors[1], linewidth = 3, label = "observation y")
+lines!(ax2, ts, Z_obs, color = colors[2], linewidth = 3, label = "observation z")
+
+# legendのために濃い色の見えない線を追加
+lines!(ax2, [NaN], [NaN], color = colors[3], linewidth = 3, label = "regression lines",)
+lines!(ax2, [NaN], [NaN], color = colors[4], linewidth = 3, label = "state variable x",)
+lines!(ax2, [NaN], [NaN], color = colors[5], linewidth = 3, label = "regression + state variable",)
+
+axislegend(ax2, position = :lt)
 
 ################################################################
 # display and save plot

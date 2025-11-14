@@ -52,12 +52,12 @@ colors = [
     colorant"#D55E00",  # Vermilion
     colorant"#56B4E9",  # Sky blue
 ]
-unit = 100
-mul_width, mul_height = 18, 12
+unit = 50
+mul_width, mul_height = 12, 18
 fig = Figure(
     size = (mul_width * unit, mul_height * unit),
-    # figure_padding = 30,
-    figure_padding = 0,
+    figure_padding = 30,
+    # figure_padding = 10,
 )
 
 axes = [Axis(fig[i, j], ) for i in 1:mul_height, j in 1:mul_width] # 12 x 18
@@ -65,7 +65,7 @@ hidedecorations!.(axes); hidespines!.(axes)
 
 ################
 # plot title
-################
+###############
 Label(fig[0, 1:mul_width], "state space sequence data analysis", fontsize = 20, font = :bold, )
 
 ################################################################
@@ -94,12 +94,14 @@ Y_obs =
 ################
 # vis.
 ################
-ax = Axis(fig[1:div(mul_height, 2), 1:div(mul_width, 2)],
+ax = Axis(fig[1:div(mul_height, 3), 1:div(mul_width, 2)],
           title = "2 dim sequence data",
-          xlabel = L"x", ylabel = L"y",
+          xlabel = L"y_1", ylabel = L"y_2",
           )
 lines!(ax, Y_obs[1, :], Y_obs[2, :], )#color = :blue, markersize = 8)
 scatter!(ax, Y_obs[1, :], Y_obs[2, :], color = :blue, markersize = 12)
+text!(ax, Y_obs[1, 1], Y_obs[2, 1], text = "start", color = :red, align = (:left, :bottom), fontsize = 18, font = "Arial bold")
+text!(ax, Y_obs[1, end], Y_obs[2, end], text = "end", color = :red, align = (:right, :bottom), fontsize = 18, font = "Arial bold")
 
 ################################################################
 # noise, log-joint, ...
@@ -152,17 +154,126 @@ println("acceptance rate: ", @sprintf("%.3f", num_accepted / max_iter))
 # visualize the results
 ################################################################
 
-ax2 = Axis(fig[div(mul_height, 2):end, div(mul_width, 2):end],
+ax2 = Axis(fig[1:div(mul_height, 3), div(mul_width, 2)+1:mul_width],
            title = "state transition sequence samples",
-           xlabel = L"x", ylabel = L"y",
+           xlabel = L"y_1", ylabel = L"y_2",
            )
-scatter!(ax2,
-         [1, 2, 3],
-         [4, 5, 6],
-         color = :red,
-         markersize = 4,
-         alpha = 0.3,
+# samples
+for i in 1:max_iter
+    X = reshape(samples[:, i], D, N)
+    scatter!(ax2, X[1, :], X[2, :],
+           color = (colors[4], alpha_for(10)),
+           )
+end
+# data
+lines!(ax2, Y_obs[1, :], Y_obs[2, :], )
+scatter!(ax2, Y_obs[1, :], Y_obs[2, :], label = "observation (Y)", color = :blue, markersize = 12)
+
+# inferred state variable mean
+mean_trace = reshape(mean(samples, dims=2), D, N)
+lines!(ax2, mean_trace[1, :], mean_trace[2, :],
+       color = (:pink, 0.5),
+       linewidth = 4,
+       )
+scatter!(ax2, mean_trace[1, :], mean_trace[2, :],
+         label = "inferred state mean (X)",
+         color = (:red, 0.75),
+         markersize = 12,
+         marker = :diamond,
+         # alpha = 0.3,
          )
+axislegend(ax2, position = :rt, backgroundcolor = :white)
+
+################################################################
+# visualize the results, data and the smoothed inferred state
+################################################################
+
+ax3 = Axis(fig[div(mul_height, 3)+1:2div(mul_height, 3), 1:mul_width],
+           title = "data and the smoothed inferred state, with correspondence",
+           xlabel = L"y_1", ylabel = L"y_2",
+           )
+# data
+lines!(ax3, Y_obs[1, :], Y_obs[2, :], )
+scatter!(ax3, Y_obs[1, :], Y_obs[2, :], label = "observation (Y)", color = :blue, markersize = 12)
+
+# inferred state variable mean
+lines!(ax3, mean_trace[1, :], mean_trace[2, :],
+       color = (:pink, 0.5),
+       linewidth = 4,
+       )
+scatter!(ax3, mean_trace[1, :], mean_trace[2, :],
+         label = "inferred state mean (X)",
+         color = (:red, 0.75),
+         markersize = 12,
+         marker = :diamond,
+         # alpha = 0.3,
+         )
+
+# correspondence lines
+diff_coords = Y_obs - mean_trace
+for i in 1:N
+    lines!(ax3,
+           [Y_obs[1, i], mean_trace[1, i]],
+           [Y_obs[2, i], mean_trace[2, i]],
+           color = (:gray, 1.0),
+           # linestyle = :dash,
+           linewidth = 3,
+           )
+end
+lines!(ax3, [NaN], [NaN],
+       color = (:gray, 1.0),
+       # linestyle = :dash,
+       linewidth = 3,
+       label = "correspondence",
+       )
+axislegend(ax3, position = :rt, backgroundcolor = :white)
+
+################################################################
+# y_1 and y_2 time series plot
+################################################################
+
+ax4 = Axis(fig[2div(mul_height, 3)+1:2div(mul_height, 3)+div(div(mul_height, 3), 2), 1:mul_width],
+           title = "data and the smoothed inferred state, with correspondence",
+           xlabel = L"t", ylabel = L"y_1",
+           )
+
+ax5 = Axis(fig[2div(mul_height, 3)+div(div(mul_height, 3), 2)+1:mul_height, 1:mul_width],
+           title = "data and the smoothed inferred state, with correspondence",
+           xlabel = L"t", ylabel = L"y_2",
+           )
+
+# y_1 data
+lines!(ax4, ts, Y_obs[1, :], )
+scatter!(ax4, ts, Y_obs[1, :], label = "observation (Y)", color = :blue, markersize = 12)
+# y_1 inferred state variable mean
+lines!(ax4, ts, mean_trace[1, :],
+       color = (:pink, 0.5),
+       linewidth = 4,
+       )
+scatter!(ax4, ts, mean_trace[1, :],
+         label = "inferred state mean (y_1)",
+         color = (:red, 0.75),
+         markersize = 12,
+         marker = :diamond,
+         # alpha = 0.3,
+         )
+# y_2 data
+lines!(ax5, ts, Y_obs[2, :], )
+scatter!(ax5, ts, Y_obs[2, :], label = "observation (Y)", color = :blue, markersize = 12)
+# y_1 inferred state variable mean
+lines!(ax5, ts, mean_trace[2, :],
+       color = (:pink, 0.5),
+       linewidth = 4,
+       )
+scatter!(ax5, ts, mean_trace[2, :],
+         label = "inferred state mean (y_1)",
+         color = (:red, 0.75),
+         markersize = 12,
+         marker = :diamond,
+         # alpha = 0.3,
+         )
+
+
 
 ################################################################
 # display and save plot
