@@ -233,12 +233,12 @@ axislegend(ax3, position = :rt, backgroundcolor = :white)
 ################################################################
 
 ax4 = Axis(fig[2div(mul_height, 3)+1:2div(mul_height, 3)+div(div(mul_height, 3), 2), 1:mul_width],
-           title = "data and the smoothed inferred state, with correspondence",
+           title = "data and the smoothed inferred state",
            xlabel = L"t", ylabel = L"y_1",
            )
 
 ax5 = Axis(fig[2div(mul_height, 3)+div(div(mul_height, 3), 2)+1:mul_height, 1:mul_width],
-           title = "data and the smoothed inferred state, with correspondence",
+           title = "data and the smoothed inferred state",
            xlabel = L"t", ylabel = L"y_2",
            )
 
