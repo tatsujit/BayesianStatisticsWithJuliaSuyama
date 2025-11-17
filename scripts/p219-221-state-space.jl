@@ -13,7 +13,8 @@ end
 using DrWatson
 @quickactivate "BayesianStatisticsWithJuliaSuyama"
 program_name = "p219-221-state-space"
-using CairoMakie
+# using CairoMakie
+using GLMakie
 using LaTeXStrings
 using Distributions
 using Printf
@@ -30,6 +31,7 @@ Random.seed!(rseed)
 ################################################################
 # hyperparameters
 ################################################################
+@ic "hyperparameters"
 burnin = 100
 # burnin = 500
 # burnin = 10^3
@@ -42,9 +44,11 @@ max_iter = burnin + 10^3
 ################################################################
 # plot initialization
 ################################################################
+@ic "plot initialization"
 ################
 # plot init
 ################
+@ic "plot init"
 colors = [
     colorant"#0072B2",  # Blue
     colorant"#E69F00",  # Orange
@@ -66,11 +70,13 @@ hidedecorations!.(axes); hidespines!.(axes)
 ################
 # plot title
 ###############
+@ic "plot title"
 Label(fig[0, 1:mul_width], "state space sequence data analysis", fontsize = 20, font = :bold, )
 
 ################################################################
 # hyperparameters
 ################################################################
+@ic "hyperparameters"
 μ1, μ2 = 0.0, 0.0
 σ1, σ2 = 10.0, 10.0
 σ11, σ12, σ13 = 1.0, 1.0, 1.0
@@ -78,6 +84,7 @@ Label(fig[0, 1:mul_width], "state space sequence data analysis", fontsize = 20, 
 ################################################################
 # data
 ################################################################
+@ic "data"
 # length of data series
 N = 20
 
@@ -91,9 +98,12 @@ Y_obs =
      0.1 0.2 0.9 1.5 4.0 5.0 6.3 5.8 6.4 7.5 #=
   =# 6.7 7.6 8.7 8.2 8.5 9.6 8.4 8.4 8.4 9.0]
 
+ts = 1:size(Y_obs)[2] # x-axis for time series plot
+
 ################
 # vis.
 ################
+@ic "vis."
 ax = Axis(fig[1:div(mul_height, 3), 1:div(mul_width, 2)],
           title = "2 dim sequence data",
           xlabel = L"y_1", ylabel = L"y_2",
@@ -106,9 +116,11 @@ text!(ax, Y_obs[1, end], Y_obs[2, end], text = "end", color = :red, align = (:ri
 ################################################################
 # noise, log-joint, ...
 ################################################################
+@ic "noise, log-joint, ..."
 ################
 # state transition
 ################
+@ic "state transition"
 # noise on the initial state
 σ1 = 100.0
 # noise on the state transition
@@ -153,6 +165,7 @@ println("acceptance rate: ", @sprintf("%.3f", num_accepted / max_iter))
 ################################################################
 # visualize the results
 ################################################################
+@ic "visualize the results"
 
 ax2 = Axis(fig[1:div(mul_height, 3), div(mul_width, 2)+1:mul_width],
            title = "state transition sequence samples",
@@ -187,6 +200,7 @@ axislegend(ax2, position = :rt, backgroundcolor = :white)
 ################################################################
 # visualize the results, data and the smoothed inferred state
 ################################################################
+@ic "visualize the results, data and the smoothed inferred state"
 
 ax3 = Axis(fig[div(mul_height, 3)+1:2div(mul_height, 3), 1:mul_width],
            title = "data and the smoothed inferred state, with correspondence",
@@ -231,6 +245,7 @@ axislegend(ax3, position = :rt, backgroundcolor = :white)
 ################################################################
 # y_1 and y_2 time series plot
 ################################################################
+@ic "y_1 and y_2 time series plot"
 
 ax4 = Axis(fig[2div(mul_height, 3)+1:2div(mul_height, 3)+div(div(mul_height, 3), 2), 1:mul_width],
            title = "data and the smoothed inferred state",
@@ -278,6 +293,7 @@ scatter!(ax5, ts, mean_trace[2, :],
 ################################################################
 # display and save plot
 ################################################################
+@ic "display and save plot"
 
 disp && fig |> display
 # save_fig && safesave(plotsdir(program_name * "_colorscheme=" * cs * "_.pdf"), fig)
