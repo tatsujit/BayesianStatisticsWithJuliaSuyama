@@ -1,0 +1,59 @@
+* この repository について
+須山敦志・著「[[https://www.kspub.co.jp/book/detail/5259801.html][Juliaで作って学ぶベイズ統計学]]」 (2021年) のコードを、プロットごとに、独立した =.jl= ファイルにしてアップしました。
+それらは =scripts/= にあります。プロットが載っているページがファイル名についています。
+コードに対応する名前のついたプロットは .pdf か .png の、容量の小さい方で、 =plots/= に入れてあります。
+
+=src/= にはいくつかのコードから共通に呼び出すサブルーチンを =utility_functions.jl= にまとめています。
+
+** 本のコードからの変更点
+- プロットの描画には、PyPlot の代わりに CairoMakie を用いた（GLMakieにした方が最後の方の図の描画が速かったかも）
+- Julia での研究プロジェクト管理のためには [[https://github.com/JuliaDynamics/DrWatson.jl][DrWatson.jl]] が素晴らしいので、なるべくこれを用いた
+  - しかしパラメータを Dict で管理して網羅的な計算をしたりはしていない
+  - デフォルトのディレクトリ構造とパス関係の関数とファイル保存関数 =safesave= くらいのみ用いた
+- 最後の方の重めの計算は並列化した
+
+* DrWatson.jl が生成した README
+This code base is using the [Julia Language](https://julialang.org/) and
+[DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
+to make a reproducible scientific project named
+> BayesianStatisticsWithJuliaSuyama
+
+It is authored by TT.
+
+To (locally) reproduce this project, do the following:
+
+0. Download this code base. Notice that raw data are typically not included in the
+   git-history and may need to be downloaded independently.
+1. Open a Julia console and do:
+   #+begin_src julia
+   julia> using Pkg
+   julia> Pkg.add("DrWatson") # install globally, for using `quickactivate`
+   julia> Pkg.activate("path/to/this/project")
+   julia> Pkg.instantiate()
+   #+end_src
+
+This will install all necessary packages for you to be able to run the scripts and
+everything should work out of the box, including correctly finding local paths.
+
+You may notice that most scripts start with the commands:
+#+begin_src julia
+using DrWatson
+@quickactivate "BayesianStatisticsWithJuliaSuyama"
+#+end_src
+which auto-activate the project and enable local path handling from DrWatson.
+* メモ
+** できていないこと
+- 2025/10/20 - Dirichlet については barycentric plot をしたかったが、できていない。Claudeにはできなかった。
+* 本の誤植
+- p. 143 式 5.12 と 5.13 が逆
+- p. 156 コードでブロードキャスト漏れ
+  #+begin_src julia
+  σp(xp) = sqrt(σ^2 + (xp' * Σ_hat * xp)[1])
+  #+end_src
+  ↓
+  #+begin_src julia
+  σp(xp) = sqrt(σ^2 .+ (xp' * Σ_hat * xp)[1])
+  #+end_src
+- p. 190 =inference_wrapper_gd()= 定義漏れ
+- p. 217 =log_joint()= 内のX_obs と Y_obs はそれぞれ X, Y のタイポ
+- p. 234 σ0 (未定義) → σ1
